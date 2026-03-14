@@ -1,20 +1,46 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { Task } from '../types/task';
 import { parseTaskDueDateTime } from '../utils/date';
 
 let configured = false;
+let notificationHandlerConfigured = false;
+let notificationsModule: typeof import('expo-notifications') | null = null;
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+const isExpoGoAndroid = Platform.OS === 'android' && Constants.appOwnership === 'expo';
+
+export const isNotificationsSupported = () => !isExpoGoAndroid;
+
+const getNotificationsModule = async () => {
+  if (!isNotificationsSupported()) {
+    return null;
+  }
+
+  if (!notificationsModule) {
+    notificationsModule = await import('expo-notifications');
+  }
+
+  if (!notificationHandlerConfigured) {
+    notificationsModule.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowBanner: true,
+        shouldShowList: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+    notificationHandlerConfigured = true;
+  }
+
+  return notificationsModule;
+};
 
 const ensurePermissions = async () => {
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) {
+    return false;
+  }
+
   const existing = await Notifications.getPermissionsAsync();
   if (existing.granted || existing.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) {
     return true;
@@ -25,6 +51,11 @@ const ensurePermissions = async () => {
 };
 
 export const hasNotificationPermission = async () => {
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) {
+    return false;
+  }
+
   const existing = await Notifications.getPermissionsAsync();
   return existing.granted || existing.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
 };
@@ -33,6 +64,12 @@ export const requestNotificationPermission = async () => ensurePermissions();
 
 export const configureNotifications = async () => {
   if (configured) {
+    return;
+  }
+
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) {
+    configured = true;
     return;
   }
 
@@ -54,10 +91,20 @@ export const cancelTaskReminder = async (notificationId?: string) => {
     return;
   }
 
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) {
+    return;
+  }
+
   await Notifications.cancelScheduledNotificationAsync(notificationId);
 };
 
 export const scheduleTaskReminder = async (task: Task): Promise<string | undefined> => {
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) {
+    return undefined;
+  }
+
   const hasPermission = await ensurePermissions();
   if (!hasPermission || task.status === 'completed') {
     return undefined;

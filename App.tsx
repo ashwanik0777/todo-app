@@ -18,7 +18,12 @@ import { AnalyticsScreen } from './src/screens/AnalyticsScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
 import { TaskDetailScreen } from './src/screens/TaskDetailScreen';
-import { configureNotifications, hasNotificationPermission, requestNotificationPermission } from './src/services/notifications';
+import {
+  configureNotifications,
+  hasNotificationPermission,
+  isNotificationsSupported,
+  requestNotificationPermission,
+} from './src/services/notifications';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -41,6 +46,11 @@ const AppNavigator = () => {
   }, []);
 
   const handleNotificationPress = async () => {
+    if (!isNotificationsSupported()) {
+      showToast('Push notifications are not supported in Expo Go on Android. Please use a development build.');
+      return;
+    }
+
     const granted = await requestNotificationPermission();
     setNotificationEnabled(granted);
     showToast(granted ? 'Task reminders enabled' : 'Notification permission blocked');
