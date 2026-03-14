@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { FlatList, Pressable, Text, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { CircleCheckBig, ListTodo, Plus } from 'lucide-react-native';
 import { AppFooter } from '../components';
@@ -18,15 +18,29 @@ export const HomeScreen = ({ navigation }: Props) => {
   const { tasks, deleteTask, toggleTaskCompletion } = useTasks();
   const { activeFilter, setActiveFilter, filteredTasks } = useTaskFilters(tasks);
   const { showToast } = useToast();
+  const [searchQuery, setSearchQuery] = useState('');
   const completedCount = useMemo(() => tasks.filter((task) => task.status === 'completed').length, [tasks]);
 
+  const normalizedSearchQuery = useMemo(() => searchQuery.trim().toLowerCase(), [searchQuery]);
+
+  const searchedTasks = useMemo(() => {
+    if (!normalizedSearchQuery) {
+      return filteredTasks;
+    }
+
+    return filteredTasks.filter((task) => {
+      const fields = [task.title, task.description, task.category, task.tags.join(' ')].join(' ').toLowerCase();
+      return fields.includes(normalizedSearchQuery);
+    });
+  }, [filteredTasks, normalizedSearchQuery]);
+
   const subtitle = useMemo(() => {
-    if (!filteredTasks.length) {
+    if (!searchedTasks.length) {
       return 'No tasks in this filter yet.';
     }
 
-    return `${filteredTasks.length} task${filteredTasks.length === 1 ? '' : 's'}`;
-  }, [filteredTasks.length]);
+    return `${searchedTasks.length} task${searchedTasks.length === 1 ? '' : 's'}`;
+  }, [searchedTasks.length]);
 
   return (
     <View className="flex-1 bg-zinc-50 px-4 dark:bg-zinc-950">
@@ -54,8 +68,23 @@ export const HomeScreen = ({ navigation }: Props) => {
 
       <FilterTabs activeFilter={activeFilter} onFilterChange={setActiveFilter} />
 
+      <View className="mb-3 flex-row items-center rounded-2xl border border-zinc-200 bg-white px-3 dark:border-zinc-800 dark:bg-zinc-900">
+        <TextInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholder="Search by title, category, tags..."
+          placeholderTextColor="#a1a1aa"
+          className="h-11 flex-1 text-sm text-zinc-900 dark:text-zinc-100"
+        />
+        {!!searchQuery.trim().length && (
+          <Pressable onPress={() => setSearchQuery('')} className="rounded-lg px-2 py-1">
+            <Text className="text-xs font-semibold text-zinc-500 dark:text-zinc-300">Clear</Text>
+          </Pressable>
+        )}
+      </View>
+
       <FlatList
-        data={filteredTasks}
+        data={searchedTasks}
         keyExtractor={(item) => item.id}
         className="flex-1"
         showsVerticalScrollIndicator={false}
@@ -73,7 +102,12 @@ export const HomeScreen = ({ navigation }: Props) => {
           />
         )}
         contentContainerStyle={{ paddingBottom: 96 }}
-        ListEmptyComponent={<EmptyState title="Nothing here yet" subtitle="Create a task to get started." />}
+        ListEmptyComponent={
+          <EmptyState
+            title="Nothing here yet"
+            subtitle={normalizedSearchQuery ? 'Try another keyword or clear search.' : 'Create a task to get started.'}
+          />
+        }
       />
 
       <View className="pb-4">

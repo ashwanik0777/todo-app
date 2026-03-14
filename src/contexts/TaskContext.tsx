@@ -9,6 +9,7 @@ type TaskContextValue = {
   updateTask: (id: string, updates: Partial<TaskInput>) => void;
   deleteTask: (id: string) => void;
   duplicateTask: (id: string) => void;
+  clearCompletedTasks: () => number;
   toggleTaskCompletion: (id: string) => Task | undefined;
   toggleSubtaskCompletion: (taskId: string, subtaskId: string) => void;
   getTaskById: (id: string) => Task | undefined;
@@ -104,6 +105,17 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
+  const clearCompletedTasks = () => {
+    let removedCount = 0;
+
+    setTasks((prev) => {
+      removedCount = prev.filter((task) => task.status === 'completed').length;
+      return prev.filter((task) => task.status !== 'completed');
+    });
+
+    return removedCount;
+  };
+
   const toggleTaskCompletion = (id: string) => {
     let nextTask: Task | undefined;
 
@@ -156,6 +168,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
       updateTask,
       deleteTask,
       duplicateTask,
+      clearCompletedTasks,
       toggleTaskCompletion,
       toggleSubtaskCompletion,
       getTaskById,

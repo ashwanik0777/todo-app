@@ -24,8 +24,21 @@ export const AnalyticsScreen = ({}: Props) => {
     const pending = tasks.filter((task) => task.status === 'pending').length;
     const overdue = tasks.filter((task) => isOverdue(task)).length;
     const today = tasks.filter((task) => isToday(task)).length;
+    const highPriorityPending = tasks.filter((task) => task.status === 'pending' && task.priority === 'high').length;
 
-    return { total, completed, pending, overdue, today };
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+    sevenDaysAgo.setHours(0, 0, 0, 0);
+
+    const completedLast7Days = tasks.filter((task) => {
+      if (!task.completedAt) {
+        return false;
+      }
+
+      return new Date(task.completedAt).getTime() >= sevenDaysAgo.getTime();
+    }).length;
+
+    return { total, completed, pending, overdue, today, highPriorityPending, completedLast7Days };
   }, [tasks]);
 
   const completionRate = metrics.total ? Math.round((metrics.completed / metrics.total) * 100) : 0;
@@ -45,8 +58,12 @@ export const AnalyticsScreen = ({}: Props) => {
         <MetricCard label="Pending" value={metrics.pending} />
         <MetricCard label="Today" value={metrics.today} />
       </View>
-      <View className="flex-row gap-3">
+      <View className="mb-3 flex-row gap-3">
         <MetricCard label="Overdue" value={metrics.overdue} />
+        <MetricCard label="Done (7d)" value={metrics.completedLast7Days} />
+      </View>
+      <View className="flex-row gap-3">
+        <MetricCard label="High Priority Open" value={metrics.highPriorityPending} />
       </View>
 
       <View className="mt-auto pb-4">
