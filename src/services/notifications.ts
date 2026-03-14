@@ -24,6 +24,13 @@ const ensurePermissions = async () => {
   return requested.granted || requested.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
 };
 
+export const hasNotificationPermission = async () => {
+  const existing = await Notifications.getPermissionsAsync();
+  return existing.granted || existing.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+};
+
+export const requestNotificationPermission = async () => ensurePermissions();
+
 export const configureNotifications = async () => {
   if (configured) {
     return;
@@ -39,7 +46,6 @@ export const configureNotifications = async () => {
     });
   }
 
-  await ensurePermissions();
   configured = true;
 };
 
