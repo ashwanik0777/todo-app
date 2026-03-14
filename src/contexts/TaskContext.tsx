@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { loadTasks, saveTasks } from '../storage/tasksStorage';
+import { cancelTaskReminder, scheduleTaskReminder } from '../services/notifications';
 import { Subtask, Task, TaskInput } from '../types/task';
 
 type TaskContextValue = {
@@ -62,62 +63,118 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     setTasks((prev) => [task, ...prev]);
+
+    void (async () => {
+      const reminderNotificationId = await scheduleTaskReminder(task);
+      if (!reminderNotificationId) {
+        return;
+      }
+
+      setTasks((prev) => prev.map((prevTask) => (prevTask.id === task.id ? { ...prevTask, reminderNotificationId } : prevTask)));
+    })();
   };
 
   const updateTask = (id: string, updates: Partial<TaskInput>) => {
+    let updatedTask: Task | undefined;
+    let oldReminderId: string | undefined;
+
     setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id
-          ? {
-              ...task,
-              ...updates,
-              updatedAt: new Date().toISOString(),
-            }
-          : task,
-      ),
+      prev.map((task) => {
+        if (task.id !== id) {
+          return task;
+        }
+
+        oldReminderId = task.reminderNotificationId;
+        updatedTask = {
+          ...task,
+          ...updates,
+          reminderNotificationId: undefined,
+          updatedAt: new Date().toISOString(),
+        };
+
+        return updatedTask;
+      }),
     );
+
+    void (async () => {
+      await cancelTaskReminder(oldReminderId);
+      if (!updatedTask || updatedTask.status === 'completed') {
+        return;
+      }
+
+      const reminderNotificationId = await scheduleTaskReminder(updatedTask);
+      if (!reminderNotificationId) {
+        return;
+      }
+
+      setTasks((prev) => prev.map((task) => (task.id === id ? { ...task, reminderNotificationId } : task)));
+    })();
   };
 
   const deleteTask = (id: string) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id));
+    let reminderNotificationId: string | undefined;
+
+    setTasks((prev) => {
+      const task = prev.find((item) => item.id === id);
+      reminderNotificationId = task?.reminderNotificationId;
+      return prev.filter((item) => item.id !== id);
+    });
+
+    void cancelTaskReminder(reminderNotificationId);
   };
 
   const duplicateTask = (id: string) => {
-    setTasks((prev) => {
-      const original = prev.find((task) => task.id === id);
-      if (!original) {
-        return prev;
+    const original = tasks.find((task) => task.id === id);
+    if (!original) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const clone: Task = {
+      ...original,
+      id: createId(),
+      title: `${original.title} (Copy)`,
+      subtasks: cloneSubtasksWithNewIds(original.subtasks),
+      status: 'pending',
+      reminderNotificationId: undefined,
+      completedAt: undefined,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    setTasks((prev) => [clone, ...prev]);
+
+    void (async () => {
+      const reminderNotificationId = await scheduleTaskReminder(clone);
+      if (!reminderNotificationId) {
+        return;
       }
 
-      const now = new Date().toISOString();
-      const clone: Task = {
-        ...original,
-        id: createId(),
-        title: `${original.title} (Copy)`,
-        subtasks: cloneSubtasksWithNewIds(original.subtasks),
-        status: 'pending',
-        completedAt: undefined,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      return [clone, ...prev];
-    });
+      setTasks((current) => current.map((task) => (task.id === clone.id ? { ...task, reminderNotificationId } : task)));
+    })();
   };
 
   const clearCompletedTasks = () => {
     let removedCount = 0;
+    let reminderIdsToCancel: string[] = [];
 
     setTasks((prev) => {
-      removedCount = prev.filter((task) => task.status === 'completed').length;
+      const completedTasks = prev.filter((task) => task.status === 'completed');
+      removedCount = completedTasks.length;
+      reminderIdsToCancel = completedTasks.map((task) => task.reminderNotificationId).filter((id): id is string => Boolean(id));
       return prev.filter((task) => task.status !== 'completed');
     });
+
+    if (reminderIdsToCancel.length) {
+      void Promise.all(reminderIdsToCancel.map((id) => cancelTaskReminder(id)));
+    }
 
     return removedCount;
   };
 
   const toggleTaskCompletion = (id: string) => {
     let nextTask: Task | undefined;
+    let previousReminderId: string | undefined;
 
     setTasks((prev) =>
       prev.map((task) => {
@@ -126,9 +183,11 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         const isNowCompleted = task.status !== 'completed';
+        previousReminderId = task.reminderNotificationId;
         nextTask = {
           ...task,
           status: isNowCompleted ? 'completed' : 'pending',
+          reminderNotificationId: isNowCompleted ? undefined : task.reminderNotificationId,
           completedAt: isNowCompleted ? new Date().toISOString() : undefined,
           updatedAt: new Date().toISOString(),
         };
@@ -136,6 +195,21 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
         return nextTask;
       }),
     );
+
+    void (async () => {
+      await cancelTaskReminder(previousReminderId);
+
+      if (!nextTask || nextTask.status === 'completed') {
+        return;
+      }
+
+      const reminderNotificationId = await scheduleTaskReminder(nextTask);
+      if (!reminderNotificationId) {
+        return;
+      }
+
+      setTasks((prev) => prev.map((task) => (task.id === id ? { ...task, reminderNotificationId } : task)));
+    })();
 
     return nextTask;
   };

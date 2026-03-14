@@ -20,13 +20,13 @@ export const AnimatedToast = ({ visible, message, onHidden }: AnimatedToastProps
     Animated.parallel([
       Animated.timing(opacity, {
         toValue: 1,
-        duration: 220,
+        duration: 140,
         useNativeDriver: true,
         easing: Easing.out(Easing.quad),
       }),
       Animated.timing(translateY, {
         toValue: 0,
-        duration: 220,
+        duration: 140,
         useNativeDriver: true,
         easing: Easing.out(Easing.quad),
       }),
@@ -36,18 +36,18 @@ export const AnimatedToast = ({ visible, message, onHidden }: AnimatedToastProps
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 0,
-          duration: 220,
+          duration: 140,
           useNativeDriver: true,
           easing: Easing.in(Easing.quad),
         }),
         Animated.timing(translateY, {
           toValue: 24,
-          duration: 220,
+          duration: 140,
           useNativeDriver: true,
           easing: Easing.in(Easing.quad),
         }),
       ]).start(onHidden);
-    }, 2200);
+    }, 1500);
 
     return () => clearTimeout(timeout);
   }, [visible, message, onHidden, opacity, translateY]);

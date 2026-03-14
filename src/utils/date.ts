@@ -1,9 +1,20 @@
 import { Task } from '../types/task';
 
-const toDateTime = (task: Task): Date => {
+export const parseTaskDueDateTime = (task: Pick<Task, 'dueDate' | 'dueTime'>): Date | null => {
   const datePart = task.dueDate || new Date().toISOString().split('T')[0];
   const timePart = task.dueTime || '23:59';
-  return new Date(`${datePart}T${timePart}:00`);
+  const parsed = new Date(`${datePart}T${timePart}:00`);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+};
+
+const toDateTime = (task: Task): Date => {
+  const parsed = parseTaskDueDateTime(task);
+  return parsed ?? new Date('2100-01-01T00:00:00');
 };
 
 export const isToday = (task: Task) => {

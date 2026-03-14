@@ -3,15 +3,26 @@ import { Linking, Text, View } from 'react-native';
 
 export const AppFooter = () => {
   const year = new Date().getFullYear();
+  const profileUrl = 'https://ashwanik.me';
+
   const handleAuthorPress = async () => {
-    await Linking.openURL('https://ashwanik.me');
+    try {
+      const canOpen = await Linking.canOpenURL(profileUrl);
+      if (!canOpen) {
+        return;
+      }
+
+      await Linking.openURL(profileUrl);
+    } catch {
+      return;
+    }
   };
 
   return (
     <View className="items-center rounded-2xl border border-zinc-200 bg-white/80 px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900/90">
       <Text className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
         Designed & Developed by{' '}
-        <Text accessibilityRole="link" onPress={handleAuthorPress} className=" text-blue-600 dark:text-blue-400">
+        <Text accessibilityRole="link" onPress={handleAuthorPress} className="text-blue-600 underline dark:text-blue-400">
           Ashwani Kushwaha
         </Text>
       </Text>

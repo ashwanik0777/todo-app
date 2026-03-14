@@ -18,6 +18,7 @@ export type Task = {
   tags: string[];
   subtasks: Subtask[];
   status: TaskStatus;
+  reminderNotificationId?: string;
   createdAt: string;
   updatedAt: string;
   completedAt?: string;

@@ -16,6 +16,9 @@
       "bundleIdentifier": "com.ashwanik.todoapp"
     },
     "android": {
+      "permissions": [
+        "POST_NOTIFICATIONS"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -25,6 +28,9 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.ashwanik.todoapp"
     },
+    "plugins": [
+      "expo-notifications"
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     },
