@@ -66,8 +66,6 @@ const AppNavigator = () => {
             headerStyle: { backgroundColor: isDark ? '#09090b' : '#fafafa' },
             headerTitleStyle: { color: isDark ? '#f4f4f5' : '#18181b' },
             headerTintColor: isDark ? '#f4f4f5' : '#18181b',
-            animation: 'fade_from_bottom',
-            animationDuration: 120,
           }}
         >
           <Stack.Screen
