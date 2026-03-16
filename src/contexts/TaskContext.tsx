@@ -182,13 +182,17 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
           return task;
         }
 
-        const isNowCompleted = task.status !== 'completed';
+        if (task.status === 'completed') {
+          nextTask = task;
+          return task;
+        }
+
         previousReminderId = task.reminderNotificationId;
         nextTask = {
           ...task,
-          status: isNowCompleted ? 'completed' : 'pending',
-          reminderNotificationId: isNowCompleted ? undefined : task.reminderNotificationId,
-          completedAt: isNowCompleted ? new Date().toISOString() : undefined,
+          status: 'completed',
+          reminderNotificationId: undefined,
+          completedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
 
@@ -198,17 +202,6 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
 
     void (async () => {
       await cancelTaskReminder(previousReminderId);
-
-      if (!nextTask || nextTask.status === 'completed') {
-        return;
-      }
-
-      const reminderNotificationId = await scheduleTaskReminder(nextTask);
-      if (!reminderNotificationId) {
-        return;
-      }
-
-      setTasks((prev) => prev.map((task) => (task.id === id ? { ...task, reminderNotificationId } : task)));
     })();
 
     return nextTask;

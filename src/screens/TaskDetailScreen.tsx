@@ -16,23 +16,28 @@ const ActionButton = ({
   onPress,
   variant = 'primary',
   icon,
+  disabled = false,
 }: {
   label: string;
   onPress: () => void;
   variant?: 'primary' | 'danger' | 'neutral';
   icon?: React.ReactNode;
+  disabled?: boolean;
 }) => {
   const style =
-    variant === 'danger'
+    disabled
+      ? 'bg-zinc-300 dark:bg-zinc-700'
+      : variant === 'danger'
       ? 'bg-rose-600'
       : variant === 'neutral'
         ? 'bg-zinc-200 dark:bg-zinc-800'
         : 'bg-zinc-900';
 
-  const textStyle = variant === 'neutral' ? 'text-zinc-900 dark:text-zinc-100' : 'text-white dark:text-zinc-900';
+  const textStyle =
+    disabled ? 'text-zinc-500 dark:text-zinc-300' : variant === 'neutral' ? 'text-zinc-900 dark:text-zinc-100' : 'text-white dark:text-zinc-900';
 
   return (
-    <Pressable onPress={onPress} className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl ${style}`}>
+    <Pressable disabled={disabled} onPress={onPress} className={`h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl ${style}`}>
       {icon}
       <Text className={`text-sm font-semibold ${textStyle}`}>{label}</Text>
     </Pressable>
@@ -105,7 +110,8 @@ export const TaskDetailScreen = ({ route, navigation }: Props) => {
 
         <View className="mt-6 flex-row gap-2">
           <ActionButton
-            label={task.status === 'completed' ? 'Reopen' : 'Complete'}
+            label={task.status === 'completed' ? 'Completed' : 'Complete'}
+            disabled={task.status === 'completed'}
             onPress={() => {
               const updated = toggleTaskCompletion(task.id);
               if (updated?.status === 'completed') {

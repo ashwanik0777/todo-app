@@ -31,16 +31,19 @@ const ActionButton = ({
 );
 
 export const SwipeableTaskItem = ({ task, onPress, onComplete, onDelete }: SwipeableTaskItemProps) => {
-  const renderLeftActions = () => (
-    <Animated.View className="mr-2">
-      <ActionButton
-        label="Complete"
-        onPress={onComplete}
-        backgroundClass="bg-emerald-600"
-        icon={<Check size={16} color="#ffffff" />}
-      />
-    </Animated.View>
-  );
+  const renderLeftActions =
+    task.status === 'completed'
+      ? undefined
+      : () => (
+          <Animated.View className="mr-2">
+            <ActionButton
+              label="Complete"
+              onPress={onComplete}
+              backgroundClass="bg-emerald-600"
+              icon={<Check size={16} color="#ffffff" />}
+            />
+          </Animated.View>
+        );
 
   const renderRightActions = () => (
     <Animated.View className="ml-2">
