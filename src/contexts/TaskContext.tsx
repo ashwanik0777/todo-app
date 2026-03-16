@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { loadTasks, saveTasks } from '../storage/tasksStorage';
-import { cancelTaskReminder, scheduleTaskReminder } from '../services/notifications';
+import { cancelTaskReminders, scheduleTaskReminders } from '../services/notifications';
 import { Subtask, Task, TaskInput } from '../types/task';
 
 type TaskContextValue = {
@@ -65,18 +65,18 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     setTasks((prev) => [task, ...prev]);
 
     void (async () => {
-      const reminderNotificationId = await scheduleTaskReminder(task);
-      if (!reminderNotificationId) {
+      const reminderNotificationIds = await scheduleTaskReminders(task);
+      if (!reminderNotificationIds.length) {
         return;
       }
 
-      setTasks((prev) => prev.map((prevTask) => (prevTask.id === task.id ? { ...prevTask, reminderNotificationId } : prevTask)));
+      setTasks((prev) => prev.map((prevTask) => (prevTask.id === task.id ? { ...prevTask, reminderNotificationIds } : prevTask)));
     })();
   };
 
   const updateTask = (id: string, updates: Partial<TaskInput>) => {
     let updatedTask: Task | undefined;
-    let oldReminderId: string | undefined;
+    let oldReminderIds: string[] | undefined;
 
     setTasks((prev) =>
       prev.map((task) => {
@@ -84,11 +84,11 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
           return task;
         }
 
-        oldReminderId = task.reminderNotificationId;
+        oldReminderIds = task.reminderNotificationIds;
         updatedTask = {
           ...task,
           ...updates,
-          reminderNotificationId: undefined,
+          reminderNotificationIds: undefined,
           updatedAt: new Date().toISOString(),
         };
 
@@ -97,30 +97,30 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     );
 
     void (async () => {
-      await cancelTaskReminder(oldReminderId);
+      await cancelTaskReminders(oldReminderIds);
       if (!updatedTask || updatedTask.status === 'completed') {
         return;
       }
 
-      const reminderNotificationId = await scheduleTaskReminder(updatedTask);
-      if (!reminderNotificationId) {
+      const reminderNotificationIds = await scheduleTaskReminders(updatedTask);
+      if (!reminderNotificationIds.length) {
         return;
       }
 
-      setTasks((prev) => prev.map((task) => (task.id === id ? { ...task, reminderNotificationId } : task)));
+      setTasks((prev) => prev.map((task) => (task.id === id ? { ...task, reminderNotificationIds } : task)));
     })();
   };
 
   const deleteTask = (id: string) => {
-    let reminderNotificationId: string | undefined;
+    let reminderNotificationIds: string[] | undefined;
 
     setTasks((prev) => {
       const task = prev.find((item) => item.id === id);
-      reminderNotificationId = task?.reminderNotificationId;
+      reminderNotificationIds = task?.reminderNotificationIds;
       return prev.filter((item) => item.id !== id);
     });
 
-    void cancelTaskReminder(reminderNotificationId);
+    void cancelTaskReminders(reminderNotificationIds);
   };
 
   const duplicateTask = (id: string) => {
@@ -136,7 +136,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
       title: `${original.title} (Copy)`,
       subtasks: cloneSubtasksWithNewIds(original.subtasks),
       status: 'pending',
-      reminderNotificationId: undefined,
+      reminderNotificationIds: undefined,
       completedAt: undefined,
       createdAt: now,
       updatedAt: now,
@@ -145,12 +145,12 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     setTasks((prev) => [clone, ...prev]);
 
     void (async () => {
-      const reminderNotificationId = await scheduleTaskReminder(clone);
-      if (!reminderNotificationId) {
+      const reminderNotificationIds = await scheduleTaskReminders(clone);
+      if (!reminderNotificationIds.length) {
         return;
       }
 
-      setTasks((current) => current.map((task) => (task.id === clone.id ? { ...task, reminderNotificationId } : task)));
+      setTasks((current) => current.map((task) => (task.id === clone.id ? { ...task, reminderNotificationIds } : task)));
     })();
   };
 
@@ -161,12 +161,12 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     setTasks((prev) => {
       const completedTasks = prev.filter((task) => task.status === 'completed');
       removedCount = completedTasks.length;
-      reminderIdsToCancel = completedTasks.map((task) => task.reminderNotificationId).filter((id): id is string => Boolean(id));
+      reminderIdsToCancel = completedTasks.flatMap((task) => task.reminderNotificationIds ?? []);
       return prev.filter((task) => task.status !== 'completed');
     });
 
     if (reminderIdsToCancel.length) {
-      void Promise.all(reminderIdsToCancel.map((id) => cancelTaskReminder(id)));
+      void cancelTaskReminders(reminderIdsToCancel);
     }
 
     return removedCount;
@@ -174,7 +174,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
 
   const toggleTaskCompletion = (id: string) => {
     let nextTask: Task | undefined;
-    let previousReminderId: string | undefined;
+    let previousReminderIds: string[] | undefined;
 
     setTasks((prev) =>
       prev.map((task) => {
@@ -187,11 +187,11 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
           return task;
         }
 
-        previousReminderId = task.reminderNotificationId;
+        previousReminderIds = task.reminderNotificationIds;
         nextTask = {
           ...task,
           status: 'completed',
-          reminderNotificationId: undefined,
+          reminderNotificationIds: undefined,
           completedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -201,7 +201,7 @@ export const TaskProvider = ({ children }: { children: React.ReactNode }) => {
     );
 
     void (async () => {
-      await cancelTaskReminder(previousReminderId);
+      await cancelTaskReminders(previousReminderIds);
     })();
 
     return nextTask;

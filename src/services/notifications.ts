@@ -86,8 +86,8 @@ export const configureNotifications = async () => {
   configured = true;
 };
 
-export const cancelTaskReminder = async (notificationId?: string) => {
-  if (!notificationId) {
+export const cancelTaskReminders = async (notificationIds?: string[]) => {
+  if (!notificationIds?.length) {
     return;
   }
 
@@ -96,44 +96,65 @@ export const cancelTaskReminder = async (notificationId?: string) => {
     return;
   }
 
-  await Notifications.cancelScheduledNotificationAsync(notificationId);
+  await Promise.all(notificationIds.map((notificationId) => Notifications.cancelScheduledNotificationAsync(notificationId)));
 };
 
-export const scheduleTaskReminder = async (task: Task): Promise<string | undefined> => {
+export const scheduleTaskReminders = async (task: Task): Promise<string[]> => {
   const Notifications = await getNotificationsModule();
   if (!Notifications) {
-    return undefined;
+    return [];
   }
 
   const hasPermission = await ensurePermissions();
   if (!hasPermission || task.status === 'completed') {
-    return undefined;
+    return [];
   }
 
   const dueDate = parseTaskDueDateTime(task);
   if (!dueDate) {
-    return undefined;
+    return [];
   }
 
-  const triggerDate = new Date(dueDate.getTime());
-  if (triggerDate.getTime() <= Date.now()) {
-    return undefined;
+  if (dueDate.getTime() <= Date.now()) {
+    return [];
   }
 
-  const title = task.priority === 'high' ? 'High priority task due soon' : 'Task reminder';
-  const body = `${task.title} • Due ${task.dueDate} ${task.dueTime}`;
+  const scheduledIds: string[] = [];
+  const channelId = Platform.OS === 'android' ? 'task-reminders' : undefined;
+  const beforeThirtyMins = new Date(dueDate.getTime() - 30 * 60 * 1000);
 
-  return Notifications.scheduleNotificationAsync({
+  if (beforeThirtyMins.getTime() > Date.now()) {
+    const preReminderId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Task due in 30 minutes',
+        body: `Only 30 minutes left for "${task.title}". Please complete it soon.`,
+        sound: true,
+        data: { taskId: task.id, reminderType: 'pre30' },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date: beforeThirtyMins,
+        channelId,
+      },
+    });
+
+    scheduledIds.push(preReminderId);
+  }
+
+  const dueReminderId = await Notifications.scheduleNotificationAsync({
     content: {
-      title,
-      body,
+      title: task.priority === 'high' ? 'High priority task is due now' : 'Task due now',
+      body: `The due time has arrived for "${task.title}". Complete it now.`,
       sound: true,
-      data: { taskId: task.id },
+      data: { taskId: task.id, reminderType: 'due' },
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DATE,
-      date: triggerDate,
-      channelId: Platform.OS === 'android' ? 'task-reminders' : undefined,
+      date: dueDate,
+      channelId,
     },
   });
+
+  scheduledIds.push(dueReminderId);
+  return scheduledIds;
 };

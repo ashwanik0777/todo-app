@@ -49,6 +49,11 @@ const sanitizeTask = (raw: unknown): Task | null => {
 
   const createdAt = typeof task.createdAt === 'string' ? task.createdAt : new Date().toISOString();
   const updatedAt = typeof task.updatedAt === 'string' ? task.updatedAt : createdAt;
+  const reminderNotificationIds = Array.isArray(task.reminderNotificationIds)
+    ? task.reminderNotificationIds.filter((id): id is string => typeof id === 'string')
+    : typeof (task as { reminderNotificationId?: unknown }).reminderNotificationId === 'string'
+      ? [(task as { reminderNotificationId?: string }).reminderNotificationId as string]
+      : undefined;
 
   return {
     id: task.id,
@@ -61,7 +66,7 @@ const sanitizeTask = (raw: unknown): Task | null => {
     tags,
     subtasks,
     status,
-    reminderNotificationId: typeof task.reminderNotificationId === 'string' ? task.reminderNotificationId : undefined,
+    reminderNotificationIds,
     createdAt,
     updatedAt,
     completedAt: typeof task.completedAt === 'string' ? task.completedAt : undefined,
