@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { Plus, X } from 'lucide-react-native';
+import { GripVertical, Plus, X } from 'lucide-react-native';
+import DraggableFlatList, { RenderItemParams } from 'react-native-draggable-flatlist';
 import { AppFooter } from './AppFooter';
 import { PRIORITY_OPTIONS, Task } from '../types/task';
 
@@ -78,6 +79,26 @@ export const TaskForm = ({ initialTask, submitLabel, onSubmit }: TaskFormProps) 
       subtasks: prev.subtasks.filter((subtask) => subtask.id !== subtaskId),
     }));
   };
+
+  const renderSubtaskItem = ({ item, drag, isActive }: RenderItemParams<{ id: string; title: string; completed: boolean }>) => (
+    <View
+      className={`mb-2 flex-row items-center justify-between rounded-xl border px-3 py-2 dark:border-zinc-700 ${
+        isActive ? 'border-zinc-400 bg-zinc-100 dark:bg-zinc-800' : 'border-zinc-200 bg-white dark:bg-zinc-900'
+      }`}
+    >
+      <View className="mr-2 flex-1 flex-row items-center">
+        <Pressable onLongPress={drag} delayLongPress={50} className="mr-2 rounded-lg p-1.5">
+          <GripVertical size={16} color="#71717a" />
+        </Pressable>
+        <Text className="flex-1 pr-2 text-sm text-zinc-700 dark:text-zinc-200" numberOfLines={2}>
+          {item.title}
+        </Text>
+      </View>
+      <Pressable onPress={() => removeSubtask(item.id)} className="ml-1 rounded-lg p-1.5">
+        <X size={14} color="#a1a1aa" />
+      </Pressable>
+    </View>
+  );
 
   const handleSubmit = () => {
     if (!isValid) {
@@ -202,18 +223,17 @@ export const TaskForm = ({ initialTask, submitLabel, onSubmit }: TaskFormProps) 
         </View>
 
         {form.subtasks.length > 0 && (
-          <View className="mt-2 gap-2">
-            {form.subtasks.map((subtask) => (
-              <View
-                key={subtask.id}
-                className="flex-row items-center justify-between rounded-xl border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900"
-              >
-                <Text className="flex-1 text-sm text-zinc-700 dark:text-zinc-200">{subtask.title}</Text>
-                <Pressable onPress={() => removeSubtask(subtask.id)} className="rounded-lg p-1">
-                  <X size={14} color="#a1a1aa" />
-                </Pressable>
-              </View>
-            ))}
+          <View className="mt-2">
+            <Text className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">Long press the handle to drag and reorder subtasks.</Text>
+            <DraggableFlatList
+              data={form.subtasks}
+              keyExtractor={(item) => item.id}
+              onDragEnd={({ data }) => updateField('subtasks', data)}
+              renderItem={renderSubtaskItem}
+              scrollEnabled={false}
+              activationDistance={2}
+              containerStyle={{ flexGrow: 0 }}
+            />
           </View>
         )}
 
