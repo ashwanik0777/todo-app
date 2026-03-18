@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { Plus, X } from 'lucide-react-native';
 import { AppFooter } from './AppFooter';
 import { PRIORITY_OPTIONS, Task } from '../types/task';
@@ -102,8 +102,18 @@ export const TaskForm = ({ initialTask, submitLabel, onSubmit }: TaskFormProps) 
   };
 
   return (
-    <View className="flex-1 bg-zinc-50 dark:bg-zinc-950">
-      <ScrollView className="flex-1 px-4" keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 32 }}>
+    <KeyboardAvoidingView
+      className="flex-1 bg-zinc-50 dark:bg-zinc-950"
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 84 : 24}
+    >
+      <ScrollView
+        className="flex-1 px-4"
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
+        contentContainerStyle={{ paddingBottom: 140 }}
+      >
         <View className="pt-4">
         <View className="mb-4 rounded-3xl border border-zinc-200/80 bg-white px-4 py-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
           <Text className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Task Information</Text>
@@ -223,6 +233,6 @@ export const TaskForm = ({ initialTask, submitLabel, onSubmit }: TaskFormProps) 
       <View className="px-4 pb-4 pt-2">
         <AppFooter />
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
